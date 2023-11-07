@@ -2,6 +2,20 @@
 #include <fstream>
 #include <vector>
 
+std::string reserved_words[] { "return", "int", "float", ";"};
+
+enum class tokenType {
+    return_kw,
+    int_value,
+    float_value,
+    semicolon
+};
+
+struct token {
+    tokenType type;
+    std::string value;
+};
+
 std::string read_file(std::string file_name);
 
 int main(int argc, char* argv[]) {
@@ -30,4 +44,29 @@ std::string read_file(std::string file_name) {
     file.close();
 
     return file_contents;
+}
+
+token setToken (tokenType type, std::string value) {
+    token t;
+    t.type = type;
+    t.value = value;
+    return t;
+}
+
+std::vector<token> lex(std::string file_contents) {
+    std::vector<token> tokens;
+    std::string current_element;
+    for ( char c : file_contents ) {
+        if ( c == ' ' || c == '\n' ) {
+            continue;
+        }
+        if ( c == ';' ) {
+            token t;
+            t.type = tokenType::semicolon;
+            t.value = ";";
+            tokens.push_back(t);
+        }
+        current_element += c;
+    }
+    return tokens;
 }
