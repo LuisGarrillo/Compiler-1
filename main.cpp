@@ -17,6 +17,7 @@ struct token {
 };
 
 std::string read_file(std::string file_name);
+std::vector<token> lexicalAnalysis(std::string file_contents);
 
 int main(int argc, char* argv[]) {
     if ( argc != 2 ) {
@@ -46,27 +47,40 @@ std::string read_file(std::string file_name) {
     return file_contents;
 }
 
-token setToken (tokenType type, std::string value) {
-    token t;
-    t.type = type;
-    t.value = value;
-    return t;
+token setToken (std::string type, std::string value, bool is_reserved) {
+    
 }
 
-std::vector<token> lex(std::string file_contents) {
+std::vector<token> lexicalAnalysis(std::string file_contents) {
     std::vector<token> tokens;
     std::string current_element;
     for ( char c : file_contents ) {
         if ( c == ' ' || c == '\n' ) {
-            continue;
+            if ( current_element == "" ) {
+                continue;
+            }
+            else {
+                bool is_reserved = false;
+                for ( std::string word : reserved_words ) {
+                    if ( current_element == word ) {
+                        is_reserved = true;
+                        break;
+                    }
+                }
+
+            }
         }
-        if ( c == ';' ) {
+        else if ( c == ';' ) {
             token t;
             t.type = tokenType::semicolon;
             t.value = ";";
             tokens.push_back(t);
         }
-        current_element += c;
+        else {
+            current_element += c;
+        }
+        std::cout << c << std::endl;
+        
     }
     return tokens;
 }
