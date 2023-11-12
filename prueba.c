@@ -1,3 +1,3 @@
-int numero = 20;
+int numero20;
 return numero;
 

@@ -2,9 +2,10 @@
 #include <fstream>
 #include <vector>
 
-std::string reserved_words[] { "return", "int", "float", ";"};
-char operators[] { '=', '+', '-', '*' };
 
+// Definitions
+
+std::string reserved_words[] { "return", "int", "float", ";"};
 
 enum class tokenType {
     return_kw,
@@ -15,19 +16,29 @@ enum class tokenType {
     identifier,
 
     equal_operator,
-    addition_operator,
-    subtraction_operator,
-    multiply_operator,
     semicolon,
+};
+
+struct identifier {
+    std::string name;
+    std::string value;
+    tokenType type;
 };
 
 struct token {
     tokenType type;
     std::string value;
+    std::string name;
 };
 
 std::string read_file(std::string file_name);
 std::vector<token> lexicalAnalysis(std::string file_contents);
+std::vector<token> setValues(std::vector<token> tokens);
+std::string assembly_generator(std::vector<token> tokens);
+
+
+
+//main code
 
 int main(int argc, char* argv[]) {
     if ( argc != 2 ) {
@@ -40,10 +51,19 @@ int main(int argc, char* argv[]) {
     std::cout << file_contents << std::endl;
     std::vector<token> tokens = lexicalAnalysis(file_contents);
 
+    std::cout << "hi1" << std::endl;
+
+    tokens = setValues(tokens);
+
+    std::cout << "hi2" << std::endl;
+
     for ( token t : tokens ) {
         std::cout << t.value << std::endl;
     }
 }
+
+
+//Functions
 
 std::string read_file(std::string file_name) {
     std::ifstream file;
@@ -77,24 +97,9 @@ token setToken (std::string value, bool is_reserved, bool is_operator, bool is_d
             newToken.value = value;
         }
     }
-    else if (is_operator) {
-        if (value == "=") {
-            newToken.type = tokenType::equal_operator;
-            newToken.value = value;
-        }
-        else if (value == "+") {
-            newToken.type = tokenType::addition_operator;
-            newToken.value = value;
-        }
-        else if (value == "-") {
-            newToken.type = tokenType::subtraction_operator;
-            newToken.value = value;
-        }
-        else if (value == "*") {
-            newToken.type = tokenType::multiply_operator;
-            newToken.value = value;
-        
-        }
+    else if (is_operator) {       
+        newToken.type = tokenType::equal_operator;
+        newToken.value = value;      
     }
     else if(is_digit) {
         if (value.find(".") != std::string::npos) {
@@ -109,6 +114,7 @@ token setToken (std::string value, bool is_reserved, bool is_operator, bool is_d
     else {
             newToken.type = tokenType::identifier;
             newToken.value = value;
+            newToken.name = value;
         }
 
     return newToken;
@@ -119,14 +125,9 @@ std::vector<token> lexicalAnalysis(std::string file_contents) {
     std::string current_element;
     for ( char c : file_contents ) {
         bool is_operator = false;
-        for ( char operator_char : operators ) {
-            if ( c == operator_char ) {
-                is_operator = true;
-                break;
-            }
-        }            
-        if ( c == ' ' || c == '\n' || c == ';' || is_operator) {
-            if ( current_element == "" && !is_operator) {
+                  
+        if ( c == ' ' || c == '\n' || c == ';' || c == '=') {
+            if ( current_element == "" &&  c != '=') {
                 continue;
             }
             else {
@@ -136,14 +137,14 @@ std::vector<token> lexicalAnalysis(std::string file_contents) {
                     for ( std::string word : reserved_words ) {
                         if ( current_element == word ) {
                             is_reserved = true;
-                            bool is_digit = false;
+                            is_digit = false;
                             break;
                         }
                     }
-                    if (!not is_reserved) {
+                    if (!is_reserved) {
                         for ( char ch : current_element ) {
                             if ( std::isdigit(ch) == 0) {
-                                bool is_digit = false;
+                                is_digit = false;
                                 break;
                             }
                         }
@@ -158,8 +159,8 @@ std::vector<token> lexicalAnalysis(std::string file_contents) {
                     newToken.value = ";";
                     tokens.push_back(newToken);
                 }
-                else if (is_operator) {
-                    token newToken = setToken(std::string(1, c), is_reserved = false, is_operator, is_digit = false);
+                else if (c == '=') {
+                    token newToken = setToken(std::string(1, c), is_reserved = false, true, is_digit = false);
                     tokens.push_back(newToken);
                 }
             }
@@ -169,4 +170,121 @@ std::vector<token> lexicalAnalysis(std::string file_contents) {
         }
     }
     return tokens;
+}
+
+std::vector<token> setValues(std::vector<token> tokens) {
+    std::vector<token> return_tokens;
+    std::vector<identifier> initialized_identifiers;
+
+    bool initialized = false;
+    int length = tokens.size();
+    int statements {};
+
+    for (int i = 0; i < length; i++) {
+        token current_token = tokens[i];
+        if(current_token.type == tokenType::int_type || current_token.type == tokenType::float_type) {
+            if (tokens[i+1].type == tokenType::identifier) {
+                for (identifier id : initialized_identifiers) {
+                    if (id.name == tokens[i+1].value) {
+                        std::cout << "Error: Identifier already initialized" << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                i++;
+                if (tokens[i+1].type == tokenType::equal_operator) {
+                    if (tokens[i+2].type == tokenType::int_value || tokens[i+2].type == tokenType::float_value) {
+                        if (tokens[i+3].type == tokenType::semicolon) {
+                            identifier new_identifier;
+                            new_identifier.name = tokens[i].value;
+                            new_identifier.type = tokens[i].type;
+                            new_identifier.value = tokens[i+2].value;
+                            initialized_identifiers.push_back(new_identifier);
+                            
+                            tokens[i].value = tokens[i+2].value;
+                            return_tokens.push_back(current_token);
+                            return_tokens.push_back(tokens[i]);
+                        }
+                        else {
+                            std::cout << "Error: Expected semicolon after value" << std::endl;
+                            exit(EXIT_FAILURE);
+                        }  
+                    }
+                    else {
+                        std::cout << "Error: Expected value after equal operator" << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else if (tokens[i+1].type == tokenType::semicolon) {
+                    identifier new_identifier;
+                    new_identifier.name = tokens[i].value;
+                    new_identifier.type = current_token.type;
+                    initialized_identifiers.push_back(new_identifier);
+
+                    tokens[i].value = "0";
+                    return_tokens.push_back(current_token);
+                    return_tokens.push_back(tokens[i]);
+                }
+                else {
+                    std::cout << "Error: Expected equal operator or semicolon after identifier" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+            }
+            else {
+                std::cout << "Error: Expected identifier after type declaration" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            
+        }
+        else if (current_token.type == tokenType::identifier) {
+            for (identifier id : initialized_identifiers) {
+                    if (id.name == current_token.name) {
+                        initialized = true;
+                    }
+                }
+            if (!initialized) {
+                std::cout << "Error: non-initialized identifier" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            
+            if (tokens[i+1].type == tokenType::equal_operator) {
+                if (tokens[i+2].type == tokenType::int_value || tokens[i+2].type == tokenType::float_value) {
+                    if (tokens[i+3].type == tokenType::semicolon) {
+                        tokens[i].value = tokens[i+2].value;
+                        return_tokens.push_back(current_token);
+                    }
+                    else {
+                        std::cout << "Error: Expected semicolon after value" << std::endl;
+                        exit(EXIT_FAILURE);
+                    }  
+                }
+                else {
+                    std::cout << "Error: Expected value after equal operator" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+            }
+            else if (tokens[i+1].type == tokenType::semicolon) {
+                return_tokens.push_back(current_token);
+                std::cout << "warning! unused variable" << std::endl;
+            }
+            else {
+                std::cout << "Error: Expected equal operator or semicolon after identifier" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            
+        }
+        else {
+            return_tokens.push_back(current_token);
+        }
+    }
+
+    return return_tokens;
+}
+
+
+std::string assembly_generator(std::vector<token> tokens) {
+    std::string assembly_code;
+    int length = tokens.size();
+    for (int i = 0; i < length; i++) {
+        token current_token = tokens[i];
+    }
 }
